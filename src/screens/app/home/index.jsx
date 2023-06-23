@@ -14,9 +14,15 @@ import Button from "../../../components/button";
 import Input from "../../../components/input";
 import API_URL, { sendRequest } from "../../../config/api";
 
-const Home = ({ navigation }) => {
+const Home = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [token, setToken] = useState("");
+  const [tokenValueDays, setTokenValueDays] = useState("");
+  const [hasFinishedToFetchData, setHasFinishedToFetchData] = useState(false);
+  const [tokens, setTokens] = useState([]);
+  const [hasFinishedToFetchTokens, setHasFinishedToFetchTokens] =
+    useState(false);
 
   const fields = [
     {
@@ -63,6 +69,32 @@ const Home = ({ navigation }) => {
     resetForm,
   } = formik;
 
+  const handleOnPress = async () => {
+    console.log("The meter_number being sent", values.meter_number);
+    setError("");
+
+    try {
+      const res = await sendRequest(
+        API_URL + `/tokens/${values.meter_number}`,
+        "GET"
+      );
+
+      if (res?.data?.status == 200) {
+        setHasFinishedToFetchTokens(true);
+        console.log("res.data.data", res?.data?.data);
+        setTokens(res?.data?.data || []);
+      } else {
+        setError(
+          res?.data?.message || "Error occurred while searching for tokens"
+        );
+      }
+    } catch (error) {
+      setError(error?.response?.data?.message || "An error occurred");
+      console.log("error", error);
+    }
+    setLoading(false);
+  };
+
   async function handleSubmit() {
     setLoading(true);
     setError("");
@@ -75,7 +107,12 @@ const Home = ({ navigation }) => {
       if (response?.data?.status == 200) {
         setLoading(false);
 
-        navigation.navigate("App");
+        console.log("Response data", response?.data);
+
+        setHasFinishedToFetchData(true);
+
+        setToken(response?.data?.data?.token);
+        setTokenValueDays(response?.data?.data?.token_value_days);
         resetForm();
       } else {
         setError(
@@ -144,6 +181,38 @@ const Home = ({ navigation }) => {
                     {loading ? "Buying..." : "Buy"}
                   </Button>
                 </View>
+
+                <View>
+                  <Text
+                    style={tw`text-[#223458] text-center font-extrabold text-xl`}
+                  >
+                    {hasFinishedToFetchData && `Your token is ${token}`}
+                  </Text>
+                  <Text
+                    style={tw`text-[#223458] text-center font-extrabold text-xl`}
+                  >
+                    {hasFinishedToFetchData &&
+                      `Lighting Days ${tokenValueDays}`}
+                  </Text>
+                </View>
+
+                <Button
+                  mode={"contained"}
+                  style={tw`w-full p-[5]`}
+                  onPress={handleOnPress}
+                >
+                  {loading ? "Getting tokens..." : "Get tokens"}
+                </Button>
+              </View>
+
+              <View>
+                {hasFinishedToFetchTokens && tokens.length == 0 ? (
+                  <Text>No tokens found</Text>
+                ) : (
+                  tokens.map((token, index) => (
+                    <Text key={index}>{token?.token}</Text>
+                  ))
+                )}
               </View>
             </View>
           </View>
